@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1C3557">
+<title>DEMO — Palms Field Navigator</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#F4F8FB;color:#1C3557;padding-bottom:24px}
+header{background:#1C3557;color:#fff;padding:12px 14px;position:sticky;top:0;z-index:900}
+header h1{margin:0;font-size:16px;font-weight:bold}
+header .sub{font-size:11.5px;opacity:.82;margin-top:2px}
+.warn{background:#FBE3B8;color:#7A4A00;font-size:11.5px;padding:9px 14px;line-height:1.45}
+.sel{display:flex;gap:8px;padding:10px 14px;background:#005A8E}
+.sel select{flex:1;padding:11px 8px;font-size:16px;border:0;border-radius:6px;background:#fff;color:#1C3557;font-weight:bold}
+.stats{display:flex;gap:7px;padding:10px 14px 4px}
+.stat{flex:1;background:#fff;border-radius:8px;padding:9px 4px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.stat b{display:block;font-size:20px;line-height:1.15;color:#005A8E}
+.stat.ok b{color:#1E7A3C}.stat.pr b{color:#C0392B}
+.stat span{font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;color:#5a6b80}
+.tabs{display:flex;padding:10px 14px 0;gap:7px}
+.tabs button{flex:1;padding:11px 4px;font-size:13.5px;font-weight:bold;border:0;border-radius:8px 8px 0 0;background:#dbe6f0;color:#1C3557}
+.tabs button.on{background:#fff;color:#005A8E}
+#search{width:calc(100% - 28px);margin:10px 14px;padding:12px;font-size:16px;border:1px solid #c3d3e2;border-radius:8px}
+#list{padding:0 14px}
+.card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.card.weak{background:#FFF8E6}
+.card.done{opacity:.72}
+.row{display:flex;align-items:center;gap:10px}
+.info{flex:1;min-width:0}
+.code{font-size:17px;font-weight:bold}
+.site{font-size:12px;color:#5a6b80;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-block;margin-top:5px;font-size:10px;font-weight:bold;padding:3px 7px;border-radius:10px;background:#e3f0e6;color:#1e7a3c}
+.badge.w{background:#FBE3B8;color:#8A5300}
+.badge.st{background:#E4ECF4;color:#33506F;margin-left:5px}
+.go{background:#028090;color:#fff;border:0;border-radius:8px;padding:12px 13px;font-size:12.5px;font-weight:bold;white-space:nowrap}
+.mk{background:#005A8E;color:#fff;border:0;border-radius:8px;padding:12px 13px;font-size:12.5px;font-weight:bold;white-space:nowrap}
+.undo{background:#7C8DA1;color:#fff;border:0;border-radius:8px;padding:10px 13px;font-size:12px;font-weight:bold}
+.opts{margin-top:11px;border-top:1px solid #e3ebf3;padding-top:10px;display:none}
+.opts.open{display:block}
+.opts .lbl{font-size:11px;color:#5a6b80;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px}
+.opt{display:block;width:100%;text-align:left;margin-bottom:7px;padding:12px;font-size:13.5px;font-weight:bold;
+     border:0;border-radius:8px;color:#fff}
+.opt small{display:block;font-weight:normal;font-size:11px;opacity:.9;margin-top:2px}
+.empty{text-align:center;padding:44px 22px;color:#6b7d92;font-size:14px;line-height:1.6}
+#map{height:68vh;margin:0 14px 16px;border-radius:10px;display:none}
+.note{margin:14px;padding:12px;background:#fff;border-radius:8px;font-size:11.5px;line-height:1.55;
+      color:#41556e;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.sumrow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eef3f8;font-size:13px}
+.sumrow:last-child{border:0}
+.sumrow b{font-weight:bold}
+#gate{position:fixed;inset:0;background:#1C3557;z-index:2000;display:flex;
+  align-items:center;justify-content:center;padding:24px}
+#gate .box{background:#fff;border-radius:12px;padding:22px;max-width:340px;width:100%}
+#gate h2{margin:0 0 6px;font-size:18px;color:#1C3557}
+#gate p{margin:0 0 14px;font-size:12.5px;color:#5a6b80;line-height:1.5}
+#gate input{width:100%;padding:13px;font-size:17px;border:1px solid #c3d3e2;border-radius:8px;
+  text-align:center;font-weight:bold;text-transform:uppercase}
+#gate button{width:100%;margin-top:12px;padding:14px;font-size:15px;font-weight:bold;border:0;
+  border-radius:8px;background:#028090;color:#fff}
+#gate .err{color:#C0392B;font-size:12px;margin-top:8px;display:none}
+.pill{display:inline-block;font-size:10.5px;font-weight:bold;padding:3px 9px;border-radius:10px;
+  background:#2A4770;color:#90CDE8;margin-left:6px}
+.pill.ok{background:#1E7A3C;color:#fff}
+.pill.pend{background:#B7791F;color:#fff}
+.whoami{font-size:11.5px;opacity:.85;margin-top:3px}
+.whoami button{background:none;border:0;color:#90CDE8;font-size:11px;text-decoration:underline;padding:0 0 0 8px}
+.syncbar{padding:9px 14px;background:#E8F1F8;font-size:11.5px;color:#33506F;display:flex;
+  align-items:center;justify-content:space-between;gap:10px}
+.syncbar button{background:#005A8E;color:#fff;border:0;border-radius:6px;padding:8px 12px;
+  font-size:11.5px;font-weight:bold}
+.pop b{font-size:15px;color:#1C3557}
+.pop a{display:block;margin-top:8px;background:#028090;color:#fff;text-align:center;padding:9px;border-radius:6px;
+       text-decoration:none;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="gate"><div class="box">
+  <h2>Enter your enumerator code</h2>
+  <p>This identifies your submissions to your Team Leader. You only need to do this once on this phone.</p>
+  <input id="gateInput" placeholder="P02-1" autocomplete="off">
+  <button onclick="setEnum()">Continue</button>
+  <div class="err" id="gateErr">Please enter your code.</div>
+</div></div>
+
+<header>
+  <h1>DEMO — Palms Field Navigator</h1>
+  <div class="sub">Training demonstration only — not the live assignment</div>
+  <div class="whoami">Enumerator: <b id="whoTxt">—</b><span class="pill" id="syncPill">—</span>
+    <button onclick="changeEnum()">change</button></div>
+</header>
+<div style="background:#005A8E;color:#fff;font-size:11.5px;padding:9px 14px;line-height:1.45"><b>Practice version.</b> 147 demonstration points across 2 areas and 6 pairs. Mark households freely — nothing here affects the real exercise.</div>
+<div id="persistWarn" class="warn" style="display:none">
+  This browser is not saving your marks. They will be lost if you close the page.
+  Report your completed points to your Team Leader before closing.
+</div>
+
+<div class="syncbar">
+  <span id="syncTxt">All marks saved</span>
+  <button onclick="flush(true)">Sync now</button>
+</div>
+
+<div class="sel">
+  <select id="area"></select>
+  <select id="pair"></select>
+</div>
+
+<div class="stats">
+  <div class="stat"><b id="nLeft">0</b><span>To do</span></div>
+  <div class="stat ok"><b id="nDone">0</b><span>Done</span></div>
+  <div class="stat pr"><b id="nProb">0</b><span>Problems</span></div>
+  <div class="stat"><b id="nDay">0</b><span>Per day</span></div>
+</div>
+
+<div class="tabs">
+  <button id="tTodo" class="on">To do</button>
+  <button id="tDone">Done</button>
+  <button id="tMap">Map</button>
+</div>
+
+<input id="search" placeholder="Search household code&hellip;" autocomplete="off">
+<div id="list"></div>
+<div id="map"></div>
+
+<div class="note">
+  <b>Amber cards:</b> the stored GPS for these households is unreliable. Do not trust the pin &mdash;
+  call the household or ask the site focal point for them by name, then capture a fresh GPS reading.
+  <br><br>
+  <b>Before you mark a household as not found,</b> try twice. Use &ldquo;Revisit planned&rdquo; after the first
+  attempt &mdash; it keeps the household on your list.
+  <br><br>
+  <b>This app is a checklist, not a submission.</b> Your Team Leader only knows what you report to them.
+</div>
+
+<script>
+const PTS = [{"c":"P1","s":"Palms","a":1,"p":1,"la":2.0142718,"lo":45.2966692,"u":4,"w":0},{"c":"P13","s":"Palms","a":1,"p":1,"la":2.0128879,"lo":45.292402,"u":4,"w":0},{"c":"P15_1","s":"Palms","a":1,"p":1,"la":2.0161623,"lo":45.2945826,"u":12,"w":0},{"c":"P164","s":"Palms","a":1,"p":1,"la":2.0092887,"lo":45.3014262,"u":9,"w":0},{"c":"P16_2","s":"Palms","a":1,"p":1,"la":2.016655,"lo":45.2947285,"u":6,"w":0},{"c":"P173","s":"Palms","a":1,"p":1,"la":2.0115789,"lo":45.3003901,"u":35,"w":0},{"c":"P186","s":"Palms","a":1,"p":1,"la":2.0106064,"lo":45.2999876,"u":9,"w":0},{"c":"P227","s":"Palms","a":1,"p":1,"la":2.0131033,"lo":45.2991489,"u":4,"w":0},{"c":"P252","s":"Palms","a":1,"p":1,"la":2.015208,"lo":45.30003,"u":6,"w":0},{"c":"P26","s":"Palms","a":1,"p":1,"la":2.014091,"lo":45.2936588,"u":6,"w":0},{"c":"P266","s":"Palms","a":1,"p":1,"la":2.0133238,"lo":45.2995486,"u":60,"w":0},{"c":"P281","s":"Palms","a":1,"p":1,"la":2.0101189,"lo":45.3015803,"u":8,"w":0},{"c":"P285","s":"Palms","a":1,"p":1,"la":2.0107823,"lo":45.3007848,"u":12,"w":0},{"c":"P300","s":"Palms","a":1,"p":1,"la":2.0104856,"lo":45.2992246,"u":6,"w":0},{"c":"P41_2","s":"Palms","a":1,"p":1,"la":2.0139613,"lo":45.2983792,"u":9,"w":0},{"c":"P46_2","s":"Palms","a":1,"p":1,"la":2.0153303,"lo":45.2929847,"u":12,"w":0},{"c":"P47_1","s":"Palms","a":1,"p":1,"la":2.0133745,"lo":45.2981972,"u":35,"w":0},{"c":"P49","s":"Palms","a":1,"p":1,"la":2.0143834,"lo":45.299335,"u":15,"w":0},{"c":"P5","s":"Palms","a":1,"p":1,"la":2.016536,"lo":45.2984051,"u":22,"w":0},{"c":"P50_2","s":"Palms","a":1,"p":1,"la":2.0157142,"lo":45.2962577,"u":4,"w":0},{"c":"P52_3","s":"Palms","a":1,"p":1,"la":2.0102924,"lo":45.3000958,"u":6,"w":0},{"c":"P59","s":"Palms","a":1,"p":1,"la":2.0133746,"lo":45.2928936,"u":60,"w":0},{"c":"P67_1","s":"Palms","a":1,"p":1,"la":2.0162266,"lo":45.2969372,"u":6,"w":0},{"c":"UNLABELLED_132","s":"Palms","a":1,"p":1,"la":2.0155827,"lo":45.2995207,"u":9,"w":0},{"c":"UNLABELLED_47","s":"Palms","a":1,"p":1,"la":2.0152165,"lo":45.2995911,"u":4,"w":0},{"c":"P12_1","s":"Palms","a":1,"p":2,"la":2.0258221,"lo":45.2936403,"u":9,"w":0},{"c":"P14","s":"Palms","a":1,"p":2,"la":2.0241926,"lo":45.2967066,"u":6,"w":0},{"c":"P163","s":"Palms","a":1,"p":2,"la":2.0206714,"lo":45.3022473,"u":900,"w":1},{"c":"P16_1","s":"Palms","a":1,"p":2,"la":2.0233475,"lo":45.3026045,"u":4,"w":0},{"c":"P17","s":"Palms","a":1,"p":2,"la":2.0263621,"lo":45.2998147,"u":12,"w":0},{"c":"P236","s":"Palms","a":1,"p":2,"la":2.023044,"lo":45.3026826,"u":9,"w":0},{"c":"P23_2","s":"Palms","a":1,"p":2,"la":2.0144612,"lo":45.300755,"u":9,"w":0},{"c":"P24","s":"Palms","a":1,"p":2,"la":2.0232015,"lo":45.2959294,"u":8,"w":0},{"c":"P25_1","s":"Palms","a":1,"p":2,"la":2.0247745,"lo":45.2937959,"u":6,"w":0},{"c":"P30_1","s":"Palms","a":1,"p":2,"la":2.0247965,"lo":45.2965514,"u":15,"w":0},{"c":"P31","s":"Palms","a":1,"p":2,"la":2.0217785,"lo":45.2937788,"u":4,"w":0},{"c":"P364","s":"Palms","a":1,"p":2,"la":2.0234086,"lo":45.3031344,"u":9,"w":0},{"c":"P40","s":"Palms","a":1,"p":2,"la":2.0241629,"lo":45.2962757,"u":22,"w":0},{"c":"P42_1","s":"Palms","a":1,"p":2,"la":2.0247511,"lo":45.2968406,"u":6,"w":0},{"c":"P50_1","s":"Palms","a":1,"p":2,"la":2.0229942,"lo":45.3034595,"u":22,"w":0},{"c":"P51","s":"Palms","a":1,"p":2,"la":2.0240099,"lo":45.2924232,"u":9,"w":0},{"c":"P52_1","s":"Palms","a":1,"p":2,"la":2.0218047,"lo":45.300555,"u":35,"w":0},{"c":"P52_2","s":"Palms","a":1,"p":2,"la":2.0238885,"lo":45.2926923,"u":8,"w":0},{"c":"P57_1","s":"Palms","a":1,"p":2,"la":2.0235073,"lo":45.2929941,"u":9,"w":0},{"c":"P58_1","s":"Palms","a":1,"p":2,"la":2.0227065,"lo":45.300326,"u":35,"w":0},{"c":"P60_2","s":"Palms","a":1,"p":2,"la":2.0198727,"lo":45.2992572,"u":12,"w":0},{"c":"P65","s":"Palms","a":1,"p":2,"la":2.0250781,"lo":45.3031767,"u":22,"w":0},{"c":"P10","s":"Palms","a":1,"p":3,"la":2.0169745,"lo":45.3042768,"u":4,"w":0},{"c":"P104","s":"Palms","a":1,"p":3,"la":2.0149685,"lo":45.3029989,"u":9,"w":0},{"c":"P113","s":"Palms","a":1,"p":3,"la":2.0171983,"lo":45.3056488,"u":8,"w":0},{"c":"P117","s":"Palms","a":1,"p":3,"la":2.013625,"lo":45.306475,"u":15,"w":0},{"c":"P120","s":"Palms","a":1,"p":3,"la":2.0163379,"lo":45.3045816,"u":35,"w":0},{"c":"P161","s":"Palms","a":1,"p":3,"la":2.0140789,"lo":45.3019137,"u":35,"w":0},{"c":"P175","s":"Palms","a":1,"p":3,"la":2.0172827,"lo":45.3056976,"u":35,"w":0},{"c":"P185","s":"Palms","a":1,"p":3,"la":2.0126936,"lo":45.3017677,"u":4,"w":0},{"c":"P200","s":"Palms","a":1,"p":3,"la":2.0153396,"lo":45.3069948,"u":8,"w":0},{"c":"P215","s":"Palms","a":1,"p":3,"la":2.0153688,"lo":45.3065865,"u":4,"w":0},{"c":"P250","s":"Palms","a":1,"p":3,"la":2.0103635,"lo":45.3016904,"u":6,"w":0},{"c":"P267","s":"Palms","a":1,"p":3,"la":2.0134911,"lo":45.301587,"u":8,"w":0},{"c":"P286","s":"Palms","a":1,"p":3,"la":2.0148562,"lo":45.3074108,"u":4,"w":0},{"c":"P2_1","s":"Palms","a":1,"p":3,"la":2.0212928,"lo":45.307203,"u":8,"w":0},{"c":"P316","s":"Palms","a":1,"p":3,"la":2.0163215,"lo":45.2999754,"u":8,"w":0},{"c":"P339","s":"Palms","a":1,"p":3,"la":2.0137858,"lo":45.3027751,"u":8,"w":0},{"c":"P39_2","s":"Palms","a":1,"p":3,"la":2.0182379,"lo":45.3011784,"u":8,"w":0},{"c":"P41_4","s":"Palms","a":1,"p":3,"la":2.0146381,"lo":45.3010326,"u":180,"w":1},{"c":"P45_2","s":"Palms","a":1,"p":3,"la":2.0121767,"lo":45.3043048,"u":6,"w":0},{"c":"P48","s":"Palms","a":1,"p":3,"la":2.0174425,"lo":45.3006008,"u":9,"w":0},{"c":"P62_2","s":"Palms","a":1,"p":3,"la":2.0163593,"lo":45.3010876,"u":8,"w":0},{"c":"P67_3","s":"Palms","a":1,"p":3,"la":2.0214596,"lo":45.3070628,"u":6,"w":0},{"c":"P68","s":"Palms","a":1,"p":3,"la":2.0151224,"lo":45.3013207,"u":9,"w":0},{"c":"P6_1","s":"Palms","a":1,"p":3,"la":2.018639,"lo":45.3010774,"u":35,"w":0},{"c":"P80","s":"Palms","a":1,"p":3,"la":2.0131398,"lo":45.3080062,"u":4,"w":0},{"c":"P11_1","s":"Palms","a":2,"p":4,"la":2.0185281,"lo":45.3063373,"u":12,"w":0},{"c":"P146","s":"Palms","a":2,"p":4,"la":2.0191018,"lo":45.3082132,"u":9,"w":0},{"c":"P150","s":"Palms","a":2,"p":4,"la":2.0149584,"lo":45.3099952,"u":8,"w":0},{"c":"P158","s":"Palms","a":2,"p":4,"la":2.0191537,"lo":45.3055801,"u":9,"w":0},{"c":"P15_2","s":"Palms","a":2,"p":4,"la":2.0191425,"lo":45.3055475,"u":15,"w":0},{"c":"P18","s":"Palms","a":2,"p":4,"la":2.0193799,"lo":45.3099456,"u":12,"w":0},{"c":"P203","s":"Palms","a":2,"p":4,"la":2.0181889,"lo":45.3074324,"u":4,"w":0},{"c":"P21","s":"Palms","a":2,"p":4,"la":2.0177403,"lo":45.3057103,"u":8,"w":0},{"c":"P247","s":"Palms","a":2,"p":4,"la":2.0156339,"lo":45.3087486,"u":180,"w":1},{"c":"P27","s":"Palms","a":2,"p":4,"la":2.0178254,"lo":45.3085737,"u":6,"w":0},{"c":"P2_2","s":"Palms","a":2,"p":4,"la":2.0145482,"lo":45.310061,"u":9,"w":0},{"c":"P30_2","s":"Palms","a":2,"p":4,"la":2.0172984,"lo":45.3072505,"u":4,"w":0},{"c":"P343","s":"Palms","a":2,"p":4,"la":2.017703,"lo":45.3105057,"u":35,"w":0},{"c":"P34_1","s":"Palms","a":2,"p":4,"la":2.0205862,"lo":45.3076592,"u":6,"w":0},{"c":"P355","s":"Palms","a":2,"p":4,"la":2.0165317,"lo":45.3097325,"u":12,"w":0},{"c":"P41_3","s":"Palms","a":2,"p":4,"la":2.0211937,"lo":45.3063738,"u":12,"w":0},{"c":"P43","s":"Palms","a":2,"p":4,"la":2.0200392,"lo":45.3043665,"u":8,"w":0},{"c":"P47_2","s":"Palms","a":2,"p":4,"la":2.0198969,"lo":45.309272,"u":180,"w":1},{"c":"P53_2","s":"Palms","a":2,"p":4,"la":2.0211788,"lo":45.3064295,"u":4,"w":0},{"c":"P57_2","s":"Palms","a":2,"p":4,"la":2.0206201,"lo":45.3078667,"u":12,"w":0},{"c":"P58_3","s":"Palms","a":2,"p":4,"la":2.0188624,"lo":45.3057506,"u":8,"w":0},{"c":"P62_1","s":"Palms","a":2,"p":4,"la":2.0197801,"lo":45.3065546,"u":6,"w":0},{"c":"P6_2","s":"Palms","a":2,"p":4,"la":2.0189051,"lo":45.3069402,"u":8,"w":0},{"c":"P8","s":"Palms","a":2,"p":4,"la":2.0205943,"lo":45.3090311,"u":35,"w":0},{"c":"P9","s":"Palms","a":2,"p":4,"la":2.0194727,"lo":45.3074244,"u":60,"w":0},{"c":"P11_2","s":"Palms","a":2,"p":5,"la":2.0220989,"lo":45.3076027,"u":180,"w":1},{"c":"P12_2","s":"Palms","a":2,"p":5,"la":2.0214894,"lo":45.3090905,"u":4,"w":0},{"c":"P135","s":"Palms","a":2,"p":5,"la":2.0202517,"lo":45.3122066,"u":180,"w":1},{"c":"P137","s":"Palms","a":2,"p":5,"la":2.0224671,"lo":45.3120732,"u":6,"w":0},{"c":"P16_3","s":"Palms","a":2,"p":5,"la":2.0215963,"lo":45.311077,"u":900,"w":1},{"c":"P177","s":"Palms","a":2,"p":5,"la":2.0227947,"lo":45.3090235,"u":22,"w":0},{"c":"P23_1","s":"Palms","a":2,"p":5,"la":2.025128,"lo":45.3070619,"u":8,"w":0},{"c":"P241","s":"Palms","a":2,"p":5,"la":2.0227173,"lo":45.3092753,"u":60,"w":0},{"c":"P25_2","s":"Palms","a":2,"p":5,"la":2.0202817,"lo":45.3107453,"u":8,"w":0},{"c":"P29","s":"Palms","a":2,"p":5,"la":2.02232,"lo":45.3120356,"u":9,"w":0},{"c":"P34_2","s":"Palms","a":2,"p":5,"la":2.0207786,"lo":45.3093779,"u":9,"w":0},{"c":"P35_1","s":"Palms","a":2,"p":5,"la":2.0261798,"lo":45.3124484,"u":4,"w":0},{"c":"P41_1","s":"Palms","a":2,"p":5,"la":2.0259036,"lo":45.3067794,"u":6,"w":0},{"c":"P42_2","s":"Palms","a":2,"p":5,"la":2.0222205,"lo":45.3116759,"u":9,"w":0},{"c":"P45_1","s":"Palms","a":2,"p":5,"la":2.0232409,"lo":45.3062815,"u":6,"w":0},{"c":"P46_1","s":"Palms","a":2,"p":5,"la":2.0236032,"lo":45.3102191,"u":22,"w":0},{"c":"P53_1","s":"Palms","a":2,"p":5,"la":2.0226924,"lo":45.3117701,"u":900,"w":1},{"c":"P60_1","s":"Palms","a":2,"p":5,"la":2.0250962,"lo":45.3080537,"u":9,"w":0},{"c":"P67_2","s":"Palms","a":2,"p":5,"la":2.0212148,"lo":45.3096283,"u":22,"w":0},{"c":"P6_3","s":"Palms","a":2,"p":5,"la":2.0196485,"lo":45.3117836,"u":12,"w":0},{"c":"UNLABELLED_107","s":"Palms","a":2,"p":5,"la":2.020458,"lo":45.3117792,"u":9,"w":0},{"c":"UNLABELLED_19","s":"Palms","a":2,"p":5,"la":2.0205577,"lo":45.3103796,"u":12,"w":0},{"c":"UNLABELLED_55","s":"Palms","a":2,"p":5,"la":2.0224955,"lo":45.3089331,"u":6,"w":0},{"c":"UNLABELLED_58","s":"Palms","a":2,"p":5,"la":2.0205822,"lo":45.3099105,"u":8,"w":0},{"c":"UNLABELLED_75","s":"Palms","a":2,"p":5,"la":2.0217594,"lo":45.3082982,"u":4,"w":0},{"c":"P140","s":"Palms","a":2,"p":6,"la":2.0201981,"lo":45.3176173,"u":4,"w":0},{"c":"P141","s":"Palms","a":2,"p":6,"la":2.0166039,"lo":45.3145558,"u":4,"w":0},{"c":"P149","s":"Palms","a":2,"p":6,"la":2.0222238,"lo":45.3153278,"u":4,"w":0},{"c":"P153","s":"Palms","a":2,"p":6,"la":2.0169577,"lo":45.3155679,"u":8,"w":0},{"c":"P157","s":"Palms","a":2,"p":6,"la":2.019971,"lo":45.3132937,"u":15,"w":0},{"c":"P206","s":"Palms","a":2,"p":6,"la":2.0178032,"lo":45.3128868,"u":9,"w":0},{"c":"P211","s":"Palms","a":2,"p":6,"la":2.0246588,"lo":45.3179085,"u":12,"w":0},{"c":"P244","s":"Palms","a":2,"p":6,"la":2.0252173,"lo":45.3207325,"u":6,"w":0},{"c":"P274","s":"Palms","a":2,"p":6,"la":2.0174952,"lo":45.315192,"u":22,"w":0},{"c":"P277","s":"Palms","a":2,"p":6,"la":2.0221895,"lo":45.3140657,"u":60,"w":0},{"c":"P292","s":"Palms","a":2,"p":6,"la":2.0208619,"lo":45.3166142,"u":22,"w":0},{"c":"P297","s":"Palms","a":2,"p":6,"la":2.0182021,"lo":45.3144306,"u":60,"w":0},{"c":"P305","s":"Palms","a":2,"p":6,"la":2.0244349,"lo":45.3205239,"u":6,"w":0},{"c":"P309","s":"Palms","a":2,"p":6,"la":2.0185372,"lo":45.3183805,"u":9,"w":0},{"c":"P335","s":"Palms","a":2,"p":6,"la":2.0167522,"lo":45.3150623,"u":15,"w":0},{"c":"P348","s":"Palms","a":2,"p":6,"la":2.0188759,"lo":45.3113507,"u":8,"w":0},{"c":"P356","s":"Palms","a":2,"p":6,"la":2.0215687,"lo":45.319767,"u":6,"w":0},{"c":"P35_2","s":"Palms","a":2,"p":6,"la":2.0237521,"lo":45.3206299,"u":8,"w":0},{"c":"P37","s":"Palms","a":2,"p":6,"la":2.0245283,"lo":45.315932,"u":4,"w":0},{"c":"P39_1","s":"Palms","a":2,"p":6,"la":2.0243675,"lo":45.3147777,"u":12,"w":0},{"c":"P4","s":"Palms","a":2,"p":6,"la":2.0215419,"lo":45.3191647,"u":15,"w":0},{"c":"P58_2","s":"Palms","a":2,"p":6,"la":2.0176732,"lo":45.3141507,"u":4,"w":0},{"c":"P70","s":"Palms","a":2,"p":6,"la":2.0187302,"lo":45.3180774,"u":22,"w":0},{"c":"UNLABELLED_109","s":"Palms","a":2,"p":6,"la":2.0191914,"lo":45.3121789,"u":8,"w":0},{"c":"UNLABELLED_17","s":"Palms","a":2,"p":6,"la":2.0200081,"lo":45.3093736,"u":2000,"w":1}];
+const KEY = 'palms_demo_marks_v1';
+
+/* ---------- storage (degrades safely) ---------- */
+let MEM = {}, PERSIST = true;
+try{
+  const t='__t'; localStorage.setItem(t,'1'); localStorage.removeItem(t);
+  MEM = JSON.parse(localStorage.getItem(KEY) || '{}');
+}catch(e){
+  PERSIST = false; MEM = {};
+  document.getElementById('persistWarn').style.display='block';
+}
+function save(){
+  if(!PERSIST) return;
+  try{ localStorage.setItem(KEY, JSON.stringify(MEM)); }
+  catch(e){ PERSIST=false; document.getElementById('persistWarn').style.display='block'; }
+}
+
+const OUTCOMES = [
+  {k:'done',  t:'Completed',              d:'Interview finished and submitted',      c:'#1E7A3C', hide:true},
+  {k:'phone', t:'Not found - phone invalid', d:'No working number, could not locate', c:'#C0392B', hide:true},
+  {k:'appt',  t:'Not found - not there',   d:'Appointment made but nobody present',   c:'#C0392B', hide:true},
+  {k:'name',  t:'Name does not match',     d:'A household is here, but a different one', c:'#B7791F', hide:true},
+  {k:'moved', t:'Household has moved',     d:'Confirmed no longer at this location',  c:'#C0392B', hide:true},
+  {k:'again', t:'Revisit planned',         d:'First attempt failed - stays on list',  c:'#005A8E', hide:false}
+];
+const OMAP = Object.fromEntries(OUTCOMES.map(o=>[o.k,o]));
+
+const areaSel=document.getElementById('area'), pairSel=document.getElementById('pair');
+const listEl=document.getElementById('list'), mapEl=document.getElementById('map');
+const search=document.getElementById('search');
+const tTodo=document.getElementById('tTodo'), tDone=document.getElementById('tDone'), tMap=document.getElementById('tMap');
+let view='todo', map=null, layer=null, openCard=null;
+
+const AREAS=[...new Set(PTS.map(p=>p.a))].sort((x,y)=>x-y);
+areaSel.innerHTML='<option value="0">All areas</option>'+AREAS.map(a=>`<option value="${a}">Area ${a}</option>`).join('');
+
+function fillPairs(){
+  const a=+areaSel.value;
+  if(!a){ pairSel.innerHTML='<option value="0">All pairs</option>'; return; }
+  const ps=[...new Set(PTS.filter(p=>p.a===a).map(p=>p.p))].sort((x,y)=>x-y);
+  pairSel.innerHTML='<option value="0">All pairs</option>'+ps.map(p=>`<option value="${p}">Pair ${p}</option>`).join('');
+}
+function scope(){
+  const a=+areaSel.value, p=+pairSel.value;
+  return PTS.filter(x=>(!a||x.a===a)&&(!p||x.p===p));
+}
+function isHidden(x){ const m=MEM[x.c]; return m && OMAP[m] && OMAP[m].hide; }
+function visible(){
+  const q=search.value.trim().toUpperCase();
+  return scope().filter(x=>{
+    const match = !q || x.c.toUpperCase().includes(q);
+    if(!match) return false;
+    return view==='done' ? isHidden(x) : !isHidden(x);
+  });
+}
+function navUrl(x){ return `https://www.google.com/maps/dir/?api=1&destination=${x.la},${x.lo}`; }
+
+function counts(){
+  const sc=scope();
+  const done=sc.filter(x=>MEM[x.c]==='done').length;
+  const prob=sc.filter(x=>{const m=MEM[x.c];return m&&m!=='done'&&m!=='again';}).length;
+  const left=sc.filter(x=>!isHidden(x)).length;
+  return {done,prob,left,total:sc.length};
+}
+
+function render(){
+  const c=counts();
+  document.getElementById('nLeft').textContent=c.left;
+  document.getElementById('nDone').textContent=c.done;
+  document.getElementById('nProb').textContent=c.prob;
+  document.getElementById('nDay').textContent=Math.ceil(c.left/3)||0;
+
+  if(view==='map'){ drawMap(scope().filter(x=>!isHidden(x))); return; }
+
+  const d=visible();
+  if(!d.length){
+    listEl.innerHTML = view==='done'
+      ? '<div class="empty">Nothing marked yet.<br>Mark a household to see it here.</div>'
+      : '<div class="empty">No households left on this list.<br>Report your results to your Team Leader.</div>';
+    return;
+  }
+  listEl.innerHTML = d.map(x=>{
+    const m=MEM[x.c], o=m?OMAP[m]:null;
+    return `
+    <div class="card ${x.w?'weak':''} ${o&&o.hide?'done':''}" id="c_${x.c}">
+      <div class="row">
+        <div class="info">
+          <div class="code">${x.c}</div>
+          <div class="site">${x.s}</div>
+          <span class="badge ${x.w?'w':''}">${x.w?'CALL FIRST &middot; \u00b1'+x.u+' m':'GPS OK &middot; \u00b1'+x.u+' m'}</span>
+          ${o?`<span class="badge st" style="color:${o.c}">${o.t}</span>`:''}
+        </div>
+        ${o&&o.hide
+          ? `<button class="undo" onclick="undo('${x.c}')">Undo</button>`
+          : `<button class="go" onclick="window.open('${navUrl(x)}','_blank')">Navigate</button>
+             <button class="mk" onclick="toggle('${x.c}')">Mark</button>`}
+      </div>
+      <div class="opts" id="o_${x.c}">
+        <div class="lbl">What happened at this household?</div>
+        ${OUTCOMES.map(op=>`<button class="opt" style="background:${op.c}" onclick="mark('${x.c}','${op.k}')">
+            ${op.t}<small>${op.d}</small></button>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.toggle=function(code){
+  const el=document.getElementById('o_'+code);
+  if(openCard && openCard!==code){ const p=document.getElementById('o_'+openCard); if(p) p.classList.remove('open'); }
+  el.classList.toggle('open');
+  openCard = el.classList.contains('open') ? code : null;
+};
+window.mark=function(code,k){ MEM[code]=k; save(); enqueue(code,k); openCard=null; render(); };
+window.undo=function(code){ delete MEM[code]; save(); enqueue(code,'UNDO'); render(); };
+
+/* ---------- lazy map ---------- */
+let LEAFLET=null;
+function loadLeaflet(){
+  if(LEAFLET) return LEAFLET;
+  LEAFLET=new Promise((res,rej)=>{
+    const c=document.createElement('link');
+    c.rel='stylesheet'; c.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';
+    document.head.appendChild(c);
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+    s.onload=()=>res(true); s.onerror=()=>rej(new Error('no network'));
+    document.head.appendChild(s);
+    setTimeout(()=>rej(new Error('timeout')),12000);
+  });
+  return LEAFLET;
+}
+function drawMap(d){
+  mapEl.innerHTML='<div style="padding:40px 20px;text-align:center;color:#5a6b80;font-size:14px">Loading map&hellip;</div>';
+  loadLeaflet().then(()=>{
+    if(!map){
+      mapEl.innerHTML='';
+      map=L.map('map');
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {maxZoom:19,attribution:'Imagery &copy; Esri'}).addTo(map);
+    }
+    if(layer) map.removeLayer(layer);
+    layer=L.layerGroup().addTo(map);
+    if(!d.length) return;
+    d.forEach(x=>{
+      const m=L.circleMarker([x.la,x.lo],{radius:7,weight:2,color:'#fff',
+        fillColor:x.w?'#E8A33D':'#028090',fillOpacity:1});
+      m.bindPopup(`<div class="pop"><b>${x.c}</b><br>${x.s}<br>Area ${x.a} &middot; Pair ${x.p}<br>
+        ${x.w?'<span style="color:#B7791F"><b>Weak GPS \u00b1'+x.u+' m</b></span>':'GPS \u00b1'+x.u+' m'}
+        <a href="${navUrl(x)}" target="_blank">Navigate</a></div>`);
+      layer.addLayer(m);
+    });
+    map.fitBounds(L.latLngBounds(d.map(x=>[x.la,x.lo])).pad(0.15));
+    setTimeout(()=>map.invalidateSize(),50);
+  }).catch(()=>{
+    mapEl.innerHTML='<div style="padding:36px 22px;text-align:center;color:#8A5300;background:#FFF8E6;'
+      +'border-radius:10px;font-size:14px;line-height:1.6"><b>Map needs an internet connection.</b><br>'
+      +'Your list and the Navigate buttons work without it &mdash; tap <b>To do</b> to carry on.</div>';
+  });
+}
+
+function setView(v){
+  view=v; openCard=null;
+  [[tTodo,'todo'],[tDone,'done'],[tMap,'map']].forEach(([b,k])=>b.classList.toggle('on',k===v));
+  listEl.style.display = v==='map' ? 'none' : 'block';
+  mapEl.style.display  = v==='map' ? 'block' : 'none';
+  search.style.display = v==='map' ? 'none' : 'block';
+  render();
+}
+tTodo.onclick=()=>setView('todo');
+tDone.onclick=()=>setView('done');
+tMap.onclick =()=>setView('map');
+areaSel.onchange=()=>{fillPairs();applyHash();render();};
+pairSel.onchange=()=>{applyHash();render();};
+search.oninput=render;
+
+function applyHash(){
+  const p=+pairSel.value, a=+areaSel.value;
+  location.hash = p? 'p'+p : (a? 'a'+a : '');
+}
+function readHash(){
+  const h=location.hash.replace('#','');
+  if(!h) return;
+  if(h[0]==='p'){
+    const pn=+h.slice(1), rec=PTS.find(x=>x.p===pn);
+    if(rec){ areaSel.value=rec.a; fillPairs(); pairSel.value=pn; }
+  } else if(h[0]==='a'){ areaSel.value=+h.slice(1); fillPairs(); }
+}
+
+
+/* ================= sheet sync ================= */
+const ENDPOINT = 'https://script.google.com/macros/s/AKfycbz_EVcZvsFcrGxZQZIWBJ5ZotR7KBzsC_Lk2gd778XUFFttcGsgJOydHw7XhSk0NSu5YQ/exec';
+const QKEY='palms_queue_v1', EKEY='palms_enum_v1', DKEY='palms_dev_v1';
+let QUEUE=[], ENUM='', DEV='';
+
+function lsGet(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+QUEUE = lsGet(QKEY,[]) || [];
+ENUM  = lsGet(EKEY,'') || '';
+DEV   = lsGet(DKEY,'') || '';
+if(!DEV){ DEV = 'd'+Math.random().toString(36).slice(2,9); lsSet(DKEY,DEV); }
+
+function showGate(){ document.getElementById('gate').style.display='flex'; }
+function hideGate(){ document.getElementById('gate').style.display='none'; }
+
+window.setEnum=function(){
+  const v=document.getElementById('gateInput').value.trim().toUpperCase();
+  if(!v){ document.getElementById('gateErr').style.display='block'; return; }
+  ENUM=v; lsSet(EKEY,v); document.getElementById('whoTxt').textContent=v;
+  hideGate(); flush();
+};
+window.changeEnum=function(){
+  document.getElementById('gateInput').value=ENUM;
+  document.getElementById('gateErr').style.display='none';
+  showGate();
+};
+
+function pill(){
+  const p=document.getElementById('syncPill'), t=document.getElementById('syncTxt');
+  if(!p) return;
+  if(QUEUE.length===0){ p.className='pill ok'; p.textContent='synced'; t.textContent='All marks saved to the tracker.'; }
+  else { p.className='pill pend'; p.textContent=QUEUE.length+' pending';
+         t.textContent=QUEUE.length+' mark(s) not yet sent \u2014 they will send when you have signal.'; }
+}
+
+function enqueue(code,outcome){
+  const rec=PTS.find(x=>x.c===code)||{};
+  QUEUE.push({t:new Date().toISOString(), enum:ENUM, code:code,
+              area:rec.a||'', pair:rec.p||'', outcome:outcome, dev:DEV});
+  lsSet(QKEY,QUEUE); pill(); flush();
+}
+
+let sending=false;
+async function flush(manual){
+  if(sending || !QUEUE.length || !ENUM) { pill(); return; }
+  sending=true;
+  const batch=QUEUE.slice();
+  try{
+    const r=await fetch(ENDPOINT,{method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({marks:batch})});
+    const j=await r.json();
+    if(j && j.ok){
+      QUEUE=QUEUE.slice(batch.length); lsSet(QKEY,QUEUE);
+      if(manual) alert('Sent '+batch.length+' mark(s) to the tracker.');
+    } else if(manual){ alert('The tracker rejected the data. Tell your Team Leader.'); }
+  }catch(e){
+    if(manual) alert('No connection. Your marks are saved on this phone and will send later.');
+  }
+  sending=false; pill();
+}
+setInterval(()=>flush(), 60000);
+window.addEventListener('online',()=>flush());
+window.flush=flush;
+
+if(ENUM){ document.getElementById('whoTxt').textContent=ENUM; hideGate(); }
+else { showGate(); }
+pill();
+
+fillPairs(); readHash(); render();
+</script>
+</body>
+</html>
