@@ -70,6 +70,20 @@ header .sub{font-size:11.5px;opacity:.82;margin-top:2px}
   align-items:center;justify-content:space-between;gap:10px}
 .syncbar button{background:#005A8E;color:#fff;border:0;border-radius:6px;padding:8px 12px;
   font-size:11.5px;font-weight:bold}
+.tlbar{background:#028090;color:#fff;padding:10px 14px;font-size:12px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tlbar b{font-size:13.5px}
+.tlbar button{background:#fff;color:#028090;border:0;border-radius:6px;padding:8px 12px;
+  font-size:11.5px;font-weight:bold}
+.pairgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:12px 14px 4px}
+.pcard{background:#fff;border-radius:10px;padding:11px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.pcard .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.pcard .pn{font-size:14px;font-weight:bold;color:#1C3557}
+.pcard .pc{font-size:11px;color:#5a6b80}
+.bar{height:7px;border-radius:4px;background:#E4ECF4;overflow:hidden}
+.bar i{display:block;height:100%;background:#1E7A3C}
+.pcard .pl{display:flex;justify-content:space-between;font-size:10.5px;color:#5a6b80;margin-top:6px}
+.who{font-size:10.5px;color:#5a6b80;margin-top:4px}
 .pop b{font-size:15px;color:#1C3557}
 .pop a{display:block;margin-top:8px;background:#028090;color:#fff;text-align:center;padding:9px;border-radius:6px;
        text-decoration:none;font-weight:bold}
@@ -95,6 +109,12 @@ header .sub{font-size:11.5px;opacity:.82;margin-top:2px}
   This browser is not saving your marks. They will be lost if you close the page.
   Report your completed points to your Team Leader before closing.
 </div>
+
+<div class="tlbar" id="tlBar" style="display:none">
+  <span><b id="tlTitle">Team Leader view</b><br><span id="tlSub" style="opacity:.9"></span></span>
+  <button onclick="pullAll(true)">Refresh</button>
+</div>
+<div class="pairgrid" id="pairGrid" style="display:none"></div>
 
 <div class="syncbar">
   <span id="syncTxt">All marks saved</span>
@@ -201,6 +221,7 @@ function counts(){
 }
 
 function render(){
+  if(TLMODE){ renderTL(); return; }
   const c=counts();
   document.getElementById('nLeft').textContent=c.left;
   document.getElementById('nDone').textContent=c.done;
@@ -306,11 +327,13 @@ function setView(v){
 tTodo.onclick=()=>setView('todo');
 tDone.onclick=()=>setView('done');
 tMap.onclick =()=>setView('map');
-areaSel.onchange=()=>{fillPairs();applyHash();render();};
+areaSel.onchange=()=>{ if(TLMODE){ areaSel.value=TLMODE; return; } fillPairs();applyHash();render();};
 pairSel.onchange=()=>{applyHash();render();};
 search.oninput=render;
+window.pullAll=pullAll;
 
 function applyHash(){
+  if(TLMODE) return;
   const p=+pairSel.value, a=+areaSel.value;
   location.hash = p? 'p'+p : (a? 'a'+a : '');
 }
@@ -323,6 +346,89 @@ function readHash(){
   } else if(h[0]==='a'){ areaSel.value=+h.slice(1); fillPairs(); }
 }
 
+
+
+/* ================= team leader read-back ================= */
+let TLMODE=0, REMOTE={}, lastPull=null;
+
+function detectTL(){
+  const m=(location.hash||'').match(/^#tl(\d+)$/i);
+  return m? +m[1] : 0;
+}
+
+async function pullAll(manual){
+  if(!TLMODE) return;
+  try{
+    const r=await fetch(ENDPOINT+'?action=all&t='+Date.now());
+    const j=await r.json();
+    if(j && j.ok){
+      REMOTE=j.marks||{};
+      lastPull=new Date();
+      renderTL();
+      if(manual) alert('Updated. '+Object.keys(REMOTE).length+' household(s) marked so far.');
+    } else if(manual){ alert('Could not read the tracker.'); }
+  }catch(e){
+    if(manual) alert('No connection. Showing the last data loaded.');
+  }
+}
+
+function tlOutcome(code){ const r=REMOTE[code]; return r? r.o : null; }
+function tlHidden(x){ const o=tlOutcome(x.c); return o && OMAP[o] && OMAP[o].hide; }
+
+function renderTL(){
+  const sc=PTS.filter(x=>x.a===TLMODE);
+  const pairs=[...new Set(sc.map(x=>x.p))].sort((a,b)=>a-b);
+  const done=sc.filter(x=>tlOutcome(x.c)==='done').length;
+  const prob=sc.filter(x=>{const o=tlOutcome(x.c);return o&&o!=='done'&&o!=='again';}).length;
+  const left=sc.filter(x=>!tlHidden(x)).length;
+
+  document.getElementById('tlTitle').textContent='Team Leader \u2014 Area '+TLMODE;
+  document.getElementById('tlSub').textContent=
+    done+' done \u00b7 '+prob+' problems \u00b7 '+left+' remaining'
+    + (lastPull? '  \u00b7  updated '+lastPull.toTimeString().slice(0,5) : '');
+
+  document.getElementById('nLeft').textContent=left;
+  document.getElementById('nDone').textContent=done;
+  document.getElementById('nProb').textContent=prob;
+  document.getElementById('nDay').textContent=Math.ceil(left/3)||0;
+
+  document.getElementById('pairGrid').innerHTML=pairs.map(p=>{
+    const ps=sc.filter(x=>x.p===p);
+    const d=ps.filter(x=>tlOutcome(x.c)==='done').length;
+    const pr=ps.filter(x=>{const o=tlOutcome(x.c);return o&&o!=='done'&&o!=='again';}).length;
+    const pct=Math.round(d/ps.length*100);
+    const who=[...new Set(ps.map(x=>REMOTE[x.c]&&REMOTE[x.c].e).filter(Boolean))];
+    return `<div class="pcard">
+      <div class="ph"><span class="pn">Pair ${p}</span><span class="pc">${d}/${ps.length}</span></div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="pl"><span>${pct}% done</span><span>${pr? pr+' problems':'\u2014'}</span></div>
+      <div class="who">${who.length? who.join(', ') : 'no reports yet'}</div>
+    </div>`;
+  }).join('');
+
+  renderTLList();
+}
+
+function renderTLList(){
+  const q=search.value.trim().toUpperCase();
+  const p=+pairSel.value;
+  let d=PTS.filter(x=>x.a===TLMODE && (!p||x.p===p) && (!q||x.c.toUpperCase().includes(q)));
+  d=d.filter(x=> view==='done' ? tlHidden(x) : !tlHidden(x));
+  if(!d.length){ listEl.innerHTML='<div class="empty">Nothing to show here yet.</div>'; return; }
+  listEl.innerHTML=d.map(x=>{
+    const r=REMOTE[x.c], o=r?OMAP[r.o]:null;
+    return `<div class="card ${x.w?'weak':''} ${o&&o.hide?'done':''}">
+      <div class="row"><div class="info">
+        <div class="code">${x.c}</div>
+        <div class="site">Pair ${x.p} &middot; ${x.s}</div>
+        <span class="badge ${x.w?'w':''}">${x.w?'CALL FIRST':'GPS OK'}</span>
+        ${o?`<span class="badge st" style="color:${o.c}">${o.t}</span>`:''}
+        ${r?`<div class="who">${r.e||'unknown'} &middot; ${(r.t||'').slice(11,16)}</div>`:''}
+      </div>
+      <button class="go" onclick="window.open('${navUrl(x)}','_blank')">Navigate</button>
+      </div></div>`;
+  }).join('');
+}
 
 /* ================= sheet sync ================= */
 const ENDPOINT = 'https://script.google.com/macros/s/AKfycbz_EVcZvsFcrGxZQZIWBJ5ZotR7KBzsC_Lk2gd778XUFFttcGsgJOydHw7XhSk0NSu5YQ/exec';
@@ -390,7 +496,18 @@ setInterval(()=>flush(), 60000);
 window.addEventListener('online',()=>flush());
 window.flush=flush;
 
-if(ENUM){ document.getElementById('whoTxt').textContent=ENUM; hideGate(); }
+TLMODE=detectTL();
+if(TLMODE){
+  hideGate();
+  document.getElementById('tlBar').style.display='flex';
+  document.getElementById('pairGrid').style.display='grid';
+  document.getElementById('areaSelWrap')&&0;
+  areaSel.value=TLMODE; fillPairs();
+  document.querySelector('.whoami').style.display='none';
+  document.querySelector('.syncbar').style.display='none';
+  pullAll();
+  setInterval(()=>pullAll(), 60000);
+} else if(ENUM){ document.getElementById('whoTxt').textContent=ENUM; hideGate(); }
 else { showGate(); }
 pill();
 
