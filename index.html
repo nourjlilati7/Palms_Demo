@@ -110,8 +110,8 @@ header .sub{font-size:11.5px;opacity:.82;margin-top:2px}
   Report your completed points to your Team Leader before closing.
 </div>
 
-<div class="tlbar" id="tlBar" style="display:none">
-  <span><b id="tlTitle">Team Leader view</b><br><span id="tlSub" style="opacity:.9"></span></span>
+<div class="tlbar" id="tlBar">
+  <span><b>Whole team progress</b><br><span style="opacity:.9">Filter by area or pair to see that group only</span></span>
   <button onclick="pullAll(true)">Refresh</button>
 </div>
 <div class="pairgrid" id="pairGrid" style="display:none"></div>
@@ -201,7 +201,12 @@ function scope(){
   const a=+areaSel.value, p=+pairSel.value;
   return PTS.filter(x=>(!a||x.a===a)&&(!p||x.p===p));
 }
-function isHidden(x){ const m=MEM[x.c]; return m && OMAP[m] && OMAP[m].hide; }
+function stateOf(code){
+  if(MEM[code]) return {o:MEM[code], e:ENUM, mine:true};
+  const r=REMOTE[code];
+  return r? {o:r.o, e:r.e, t:r.t, mine:false} : null;
+}
+function isHidden(x){ const s=stateOf(x.c); return s && OMAP[s.o] && OMAP[s.o].hide; }
 function visible(){
   const q=search.value.trim().toUpperCase();
   return scope().filter(x=>{
@@ -214,14 +219,14 @@ function navUrl(x){ return `https://www.google.com/maps/dir/?api=1&destination=$
 
 function counts(){
   const sc=scope();
-  const done=sc.filter(x=>MEM[x.c]==='done').length;
-  const prob=sc.filter(x=>{const m=MEM[x.c];return m&&m!=='done'&&m!=='again';}).length;
+  const done=sc.filter(x=>{const s=stateOf(x.c);return s&&s.o==='done';}).length;
+  const prob=sc.filter(x=>{const s=stateOf(x.c);return s&&s.o!=='done'&&s.o!=='again';}).length;
   const left=sc.filter(x=>!isHidden(x)).length;
   return {done,prob,left,total:sc.length};
 }
 
 function render(){
-  if(TLMODE){ renderTL(); return; }
+  renderGrid();
   const c=counts();
   document.getElementById('nLeft').textContent=c.left;
   document.getElementById('nDone').textContent=c.done;
@@ -238,7 +243,7 @@ function render(){
     return;
   }
   listEl.innerHTML = d.map(x=>{
-    const m=MEM[x.c], o=m?OMAP[m]:null;
+    const st=stateOf(x.c), o=st?OMAP[st.o]:null;
     return `
     <div class="card ${x.w?'weak':''} ${o&&o.hide?'done':''}" id="c_${x.c}">
       <div class="row">
@@ -247,9 +252,11 @@ function render(){
           <div class="site">${x.s}</div>
           <span class="badge ${x.w?'w':''}">${x.w?'CALL FIRST &middot; \u00b1'+x.u+' m':'GPS OK &middot; \u00b1'+x.u+' m'}</span>
           ${o?`<span class="badge st" style="color:${o.c}">${o.t}</span>`:''}
+          ${st&&!st.mine?`<div class="who">marked by ${st.e||'another enumerator'}</div>`:''}
         </div>
         ${o&&o.hide
-          ? `<button class="undo" onclick="undo('${x.c}')">Undo</button>`
+          ? (st.mine? `<button class="undo" onclick="undo('${x.c}')">Undo</button>`
+                    : `<button class="undo" style="background:#B0BDCB" disabled>Locked</button>`)
           : `<button class="go" onclick="window.open('${navUrl(x)}','_blank')">Navigate</button>
              <button class="mk" onclick="toggle('${x.c}')">Mark</button>`}
       </div>
@@ -327,13 +334,12 @@ function setView(v){
 tTodo.onclick=()=>setView('todo');
 tDone.onclick=()=>setView('done');
 tMap.onclick =()=>setView('map');
-areaSel.onchange=()=>{ if(TLMODE){ areaSel.value=TLMODE; return; } fillPairs();applyHash();render();};
+areaSel.onchange=()=>{fillPairs();applyHash();render();};
 pairSel.onchange=()=>{applyHash();render();};
 search.oninput=render;
 window.pullAll=pullAll;
 
 function applyHash(){
-  if(TLMODE) return;
   const p=+pairSel.value, a=+areaSel.value;
   location.hash = p? 'p'+p : (a? 'a'+a : '');
 }
@@ -349,23 +355,17 @@ function readHash(){
 
 
 /* ================= team leader read-back ================= */
-let TLMODE=0, REMOTE={}, lastPull=null;
-
-function detectTL(){
-  const m=(location.hash||'').match(/^#tl(\d+)$/i);
-  return m? +m[1] : 0;
-}
+let REMOTE={}, lastPull=null;
 
 async function pullAll(manual){
-  if(!TLMODE) return;
   try{
     const r=await fetch(ENDPOINT+'?action=all&t='+Date.now());
     const j=await r.json();
     if(j && j.ok){
       REMOTE=j.marks||{};
       lastPull=new Date();
-      renderTL();
-      if(manual) alert('Updated. '+Object.keys(REMOTE).length+' household(s) marked so far.');
+      render();
+      if(manual) alert('Updated. '+Object.keys(REMOTE).length+' household(s) marked by the whole team.');
     } else if(manual){ alert('Could not read the tracker.'); }
   }catch(e){
     if(manual) alert('No connection. Showing the last data loaded.');
@@ -375,58 +375,22 @@ async function pullAll(manual){
 function tlOutcome(code){ const r=REMOTE[code]; return r? r.o : null; }
 function tlHidden(x){ const o=tlOutcome(x.c); return o && OMAP[o] && OMAP[o].hide; }
 
-function renderTL(){
-  const sc=PTS.filter(x=>x.a===TLMODE);
-  const pairs=[...new Set(sc.map(x=>x.p))].sort((a,b)=>a-b);
-  const done=sc.filter(x=>tlOutcome(x.c)==='done').length;
-  const prob=sc.filter(x=>{const o=tlOutcome(x.c);return o&&o!=='done'&&o!=='again';}).length;
-  const left=sc.filter(x=>!tlHidden(x)).length;
-
-  document.getElementById('tlTitle').textContent='Team Leader \u2014 Area '+TLMODE;
-  document.getElementById('tlSub').textContent=
-    done+' done \u00b7 '+prob+' problems \u00b7 '+left+' remaining'
-    + (lastPull? '  \u00b7  updated '+lastPull.toTimeString().slice(0,5) : '');
-
-  document.getElementById('nLeft').textContent=left;
-  document.getElementById('nDone').textContent=done;
-  document.getElementById('nProb').textContent=prob;
-  document.getElementById('nDay').textContent=Math.ceil(left/3)||0;
-
+function renderGrid(){
+  const a=+areaSel.value;
+  const sc=a? PTS.filter(x=>x.a===a) : PTS;
+  const pairs=[...new Set(sc.map(x=>x.p))].sort((x,y)=>x-y);
   document.getElementById('pairGrid').innerHTML=pairs.map(p=>{
     const ps=sc.filter(x=>x.p===p);
-    const d=ps.filter(x=>tlOutcome(x.c)==='done').length;
-    const pr=ps.filter(x=>{const o=tlOutcome(x.c);return o&&o!=='done'&&o!=='again';}).length;
+    const d=ps.filter(x=>{const s=stateOf(x.c);return s&&s.o==='done';}).length;
+    const pr=ps.filter(x=>{const s=stateOf(x.c);return s&&s.o!=='done'&&s.o!=='again';}).length;
     const pct=Math.round(d/ps.length*100);
-    const who=[...new Set(ps.map(x=>REMOTE[x.c]&&REMOTE[x.c].e).filter(Boolean))];
+    const who=[...new Set(ps.map(x=>{const s=stateOf(x.c);return s&&s.e;}).filter(Boolean))];
     return `<div class="pcard">
       <div class="ph"><span class="pn">Pair ${p}</span><span class="pc">${d}/${ps.length}</span></div>
       <div class="bar"><i style="width:${pct}%"></i></div>
       <div class="pl"><span>${pct}% done</span><span>${pr? pr+' problems':'\u2014'}</span></div>
       <div class="who">${who.length? who.join(', ') : 'no reports yet'}</div>
     </div>`;
-  }).join('');
-
-  renderTLList();
-}
-
-function renderTLList(){
-  const q=search.value.trim().toUpperCase();
-  const p=+pairSel.value;
-  let d=PTS.filter(x=>x.a===TLMODE && (!p||x.p===p) && (!q||x.c.toUpperCase().includes(q)));
-  d=d.filter(x=> view==='done' ? tlHidden(x) : !tlHidden(x));
-  if(!d.length){ listEl.innerHTML='<div class="empty">Nothing to show here yet.</div>'; return; }
-  listEl.innerHTML=d.map(x=>{
-    const r=REMOTE[x.c], o=r?OMAP[r.o]:null;
-    return `<div class="card ${x.w?'weak':''} ${o&&o.hide?'done':''}">
-      <div class="row"><div class="info">
-        <div class="code">${x.c}</div>
-        <div class="site">Pair ${x.p} &middot; ${x.s}</div>
-        <span class="badge ${x.w?'w':''}">${x.w?'CALL FIRST':'GPS OK'}</span>
-        ${o?`<span class="badge st" style="color:${o.c}">${o.t}</span>`:''}
-        ${r?`<div class="who">${r.e||'unknown'} &middot; ${(r.t||'').slice(11,16)}</div>`:''}
-      </div>
-      <button class="go" onclick="window.open('${navUrl(x)}','_blank')">Navigate</button>
-      </div></div>`;
   }).join('');
 }
 
@@ -461,7 +425,8 @@ window.changeEnum=function(){
 function pill(){
   const p=document.getElementById('syncPill'), t=document.getElementById('syncTxt');
   if(!p) return;
-  if(QUEUE.length===0){ p.className='pill ok'; p.textContent='synced'; t.textContent='All marks saved to the tracker.'; }
+  const upd = lastPull? '  Team data updated '+lastPull.toTimeString().slice(0,5)+'.' : '';
+  if(QUEUE.length===0){ p.className='pill ok'; p.textContent='synced'; t.textContent='All your marks saved.'+upd; }
   else { p.className='pill pend'; p.textContent=QUEUE.length+' pending';
          t.textContent=QUEUE.length+' mark(s) not yet sent \u2014 they will send when you have signal.'; }
 }
@@ -496,19 +461,11 @@ setInterval(()=>flush(), 60000);
 window.addEventListener('online',()=>flush());
 window.flush=flush;
 
-TLMODE=detectTL();
-if(TLMODE){
-  hideGate();
-  document.getElementById('tlBar').style.display='flex';
-  document.getElementById('pairGrid').style.display='grid';
-  document.getElementById('areaSelWrap')&&0;
-  areaSel.value=TLMODE; fillPairs();
-  document.querySelector('.whoami').style.display='none';
-  document.querySelector('.syncbar').style.display='none';
-  pullAll();
-  setInterval(()=>pullAll(), 60000);
-} else if(ENUM){ document.getElementById('whoTxt').textContent=ENUM; hideGate(); }
+document.getElementById('pairGrid').style.display='grid';
+if(ENUM){ document.getElementById('whoTxt').textContent=ENUM; hideGate(); }
 else { showGate(); }
+pullAll();
+setInterval(()=>pullAll(), 45000);
 pill();
 
 fillPairs(); readHash(); render();
