@@ -178,12 +178,12 @@ function save(){
 }
 
 const OUTCOMES = [
-  {k:'done',  t:'Completed',              d:'Interview finished and submitted',      c:'#1E7A3C', hide:true},
-  {k:'phone', t:'Not found - phone invalid', d:'No working number, could not locate', c:'#C0392B', hide:true},
-  {k:'appt',  t:'Not found - not there',   d:'Appointment made but nobody present',   c:'#C0392B', hide:true},
-  {k:'name',  t:'Name does not match',     d:'A household is here, but a different one', c:'#B7791F', hide:true},
-  {k:'moved', t:'Household has moved',     d:'Confirmed no longer at this location',  c:'#C0392B', hide:true},
-  {k:'again', t:'Revisit planned',         d:'First attempt failed - stays on list',  c:'#005A8E', hide:false}
+  {k:'completed',        t:'Completed',                 d:'Interview finished and submitted',         c:'#1E7A3C', hide:true},
+  {k:'not_found_phone',  t:'Not found - phone invalid', d:'No working number, could not locate',      c:'#C0392B', hide:true},
+  {k:'not_found_absent', t:'Not found - not there',     d:'Appointment made but nobody present',      c:'#C0392B', hide:true},
+  {k:'name_mismatch',    t:'Name does not match',       d:'A household is here, but a different one', c:'#B7791F', hide:true},
+  {k:'household_moved',  t:'Household has moved',       d:'Confirmed no longer at this location',     c:'#C0392B', hide:true},
+  {k:'revisit_planned',  t:'Revisit planned',           d:'First attempt failed - stays on list',     c:'#005A8E', hide:false}
 ];
 const OMAP = Object.fromEntries(OUTCOMES.map(o=>[o.k,o]));
 
@@ -224,8 +224,8 @@ function navUrl(x){ return `https://www.google.com/maps/dir/?api=1&destination=$
 
 function counts(){
   const sc=scope();
-  const done=sc.filter(x=>{const s=stateOf(x.c);return s&&s.o==='done';}).length;
-  const prob=sc.filter(x=>{const s=stateOf(x.c);return s&&s.o!=='done'&&s.o!=='again';}).length;
+  const done=sc.filter(x=>{const s=stateOf(x.c);return s&&s.o==='completed';}).length;
+  const prob=sc.filter(x=>{const s=stateOf(x.c);return s&&s.o!=='completed'&&s.o!=='revisit_planned';}).length;
   const left=sc.filter(x=>!isHidden(x)).length;
   return {done,prob,left,total:sc.length};
 }
@@ -386,8 +386,8 @@ function renderGrid(){
   const pairs=[...new Set(sc.map(x=>x.p))].sort((x,y)=>x-y);
   document.getElementById('pairGrid').innerHTML=pairs.map(p=>{
     const ps=sc.filter(x=>x.p===p);
-    const d=ps.filter(x=>{const s=stateOf(x.c);return s&&s.o==='done';}).length;
-    const pr=ps.filter(x=>{const s=stateOf(x.c);return s&&s.o!=='done'&&s.o!=='again';}).length;
+    const d=ps.filter(x=>{const s=stateOf(x.c);return s&&s.o==='completed';}).length;
+    const pr=ps.filter(x=>{const s=stateOf(x.c);return s&&s.o!=='completed'&&s.o!=='revisit_planned';}).length;
     const pct=Math.round(d/ps.length*100);
     const who=[...new Set(ps.map(x=>{const s=stateOf(x.c);return s&&s.e;}).filter(Boolean))];
     return `<div class="pcard">
