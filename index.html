@@ -86,6 +86,19 @@ header .sub{font-size:11.5px;opacity:.82;margin-top:2px}
 .bar i{display:block;height:100%;background:#1E7A3C}
 .pcard .pl{display:flex;justify-content:space-between;font-size:10.5px;color:#5a6b80;margin-top:6px}
 .who{font-size:10.5px;color:#5a6b80;margin-top:4px}
+.rep{background:#028090;color:#fff;border:0;border-radius:6px;padding:8px 12px;
+  font-size:11.5px;font-weight:bold}
+#repBox{position:fixed;inset:0;background:rgba(28,53,87,.94);z-index:1800;display:none;
+  align-items:center;justify-content:center;padding:22px}
+#repBox .rb{background:#fff;border-radius:12px;padding:18px;max-width:380px;width:100%}
+#repBox h3{margin:0 0 4px;font-size:16px;color:#1C3557}
+#repBox p{margin:0 0 10px;font-size:11.5px;color:#5a6b80;line-height:1.5}
+#repBox textarea{width:100%;height:190px;font-family:monospace;font-size:12px;padding:10px;
+  border:1px solid #c3d3e2;border-radius:8px;resize:none}
+#repBox .btns{display:flex;gap:8px;margin-top:10px}
+#repBox .btns button{flex:1;padding:12px;font-size:13px;font-weight:bold;border:0;border-radius:8px}
+#repBox .go2{background:#028090;color:#fff}
+#repBox .cl{background:#dbe6f0;color:#1C3557}
 .pop b{font-size:15px;color:#1C3557}
 .pop a{display:block;margin-top:8px;background:#028090;color:#fff;text-align:center;padding:9px;border-radius:6px;
        text-decoration:none;font-weight:bold}
@@ -123,7 +136,7 @@ header .sub{font-size:11.5px;opacity:.82;margin-top:2px}
 
 <div class="syncbar">
   <span id="syncTxt">All marks saved</span>
-  <button onclick="flush(true)">Sync now</button>
+  <span style="display:flex;gap:7px"><button class="rep" onclick="showReport()">Copy report</button><button onclick="flush(true)">Sync now</button></span>
 </div>
 
 <div class="sel">
@@ -147,6 +160,16 @@ header .sub{font-size:11.5px;opacity:.82;margin-top:2px}
 <input id="search" placeholder="Search household code&hellip;" autocomplete="off">
 <div id="list"></div>
 <div id="map"></div>
+
+<div id="repBox"><div class="rb">
+  <h3>Your report</h3>
+  <p>Everything you marked today on this phone. Copy it into the WhatsApp group if your Team Leader asks, or if sync is not working.</p>
+  <textarea id="repText" readonly></textarea>
+  <div class="btns">
+    <button class="go2" onclick="copyReport()">Copy</button>
+    <button class="cl" onclick="document.getElementById('repBox').style.display='none'">Close</button>
+  </div>
+</div></div>
 
 <div class="note">
   <b>Amber cards:</b> the stored GPS for these households is unreliable. Do not trust the pin &mdash;
@@ -280,8 +303,16 @@ window.toggle=function(code){
   el.classList.toggle('open');
   openCard = el.classList.contains('open') ? code : null;
 };
-window.mark=function(code,k){ MEM[code]=k; save(); enqueue(code,k); openCard=null; render(); };
-window.undo=function(code){ delete MEM[code]; save(); enqueue(code,'UNDO'); render(); };
+window.mark=function(code,k){
+  MEM[code]=k; save();
+  MYLOG[code]={o:k,t:new Date().toISOString()}; lsSet(LKEY,MYLOG);
+  enqueue(code,k); openCard=null; render();
+};
+window.undo=function(code){
+  delete MEM[code]; save();
+  delete MYLOG[code]; lsSet(LKEY,MYLOG);
+  enqueue(code,'UNDO'); render();
+};
 
 /* ---------- lazy map ---------- */
 let LEAFLET=null;
@@ -399,8 +430,39 @@ function renderGrid(){
   }).join('');
 }
 
+/* ================= report ================= */
+function buildReport(){
+  const today=new Date().toISOString().slice(0,10);
+  const mine=Object.entries(MYLOG).filter(([c,v])=>(v.t||'').slice(0,10)===today);
+  const head=(ENUM||'?')+(MYPAIR?'  \u00b7  Pair '+MYPAIR:'')+'  \u00b7  '+
+             new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  if(!mine.length) return head+'\n\nNothing marked today.';
+  const lines=[head,''];
+  OUTCOMES.forEach(o=>{
+    const codes=mine.filter(([c,v])=>v.o===o.k).map(([c])=>c).sort();
+    if(codes.length) lines.push(o.t+' ('+codes.length+'): '+codes.join(', '));
+  });
+  return lines.join('\n');
+}
+window.showReport=function(){
+  document.getElementById('repText').value=buildReport();
+  document.getElementById('repBox').style.display='flex';
+};
+window.copyReport=async function(){
+  const ta=document.getElementById('repText');
+  try{
+    await navigator.clipboard.writeText(ta.value);
+    alert('Copied. Paste it into your WhatsApp group.');
+  }catch(e){
+    ta.removeAttribute('readonly'); ta.select(); ta.setSelectionRange(0,99999);
+    alert('Select the text and copy it manually.');
+  }
+};
+
 /* ================= sheet sync ================= */
 const ENDPOINT = 'https://script.google.com/macros/s/AKfycbz_EVcZvsFcrGxZQZIWBJ5ZotR7KBzsC_Lk2gd778XUFFttcGsgJOydHw7XhSk0NSu5YQ/exec';
+const LKEY='palms_log_v1';
+let MYLOG={};
 const QKEY='palms_queue_v1', EKEY='palms_enum_v1', DKEY='palms_dev_v1', PKEY='palms_pair_v1';
 let QUEUE=[], ENUM='', DEV='', MYPAIR=0;
 
@@ -413,6 +475,7 @@ function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){}
 QUEUE = lsGet(QKEY,[]) || [];
 ENUM  = lsGet(EKEY,'') || '';
 MYPAIR= lsGet(PKEY,0) || 0;
+MYLOG = lsGet(LKEY,{}) || {};
 DEV   = lsGet(DKEY,'') || '';
 if(!DEV){ DEV = 'd'+Math.random().toString(36).slice(2,9); lsSet(DKEY,DEV); }
 
